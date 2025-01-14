@@ -2,7 +2,7 @@
 
 ### Environment
 - Python 3.12.3
-- APache Spark 4.0.0-preview1
+- Apache Spark 4.0.0-preview1
 
 ### Runnning
 
