@@ -5,7 +5,9 @@ import time
 
 
 spark = (
-    SparkSession.builder.appName("Nested JSON Example").master("local").getOrCreate()
+    SparkSession.builder.appName("Nested JSON Example")
+    .master("local-cluster[2,2,2042]")
+    .getOrCreate()
 )
 
 json1 = '{"number": 1, "name": "A", "level1": {"number": 1, "name": "A", "level2": {"number": 1, "name": "A", "level3": {"number": 1, "name": "A", "level4": {"number": 1, "name": "A", "level5": {"number": 1, "name": "A", "level6": {"number": 1, "name": "A", "level7": {"number": 1, "name": "A", "level8": {"number": 1, "name": "A", "level9": {"number": 1, "name": "A", "level10": {"key": "value1"}}}}}}}}}}}'
@@ -169,30 +171,36 @@ schema = StructType(
     ]
 )
 
-start_time = time.time()
+result_time = []
+result_df_size = []
+result_parsed_df_size = []
 
-parsed_df = df.withColumn("json", f.from_json(f.col("json"), schema).alias("key"))
+for _ in range(10):
+    start_time = time.time()
+    parsed_df = df.withColumn("json", f.from_json(f.col("json"), schema).alias("key"))
+    result_df = parsed_df.select(
+        f.col("id"),
+        f.col(
+            "json.level1.level2.level3.level4.level5.level6.level7.level8.level9.level10.key"
+        ).alias("key"),
+    )
+    result_df.show()
+    end_time = time.time()
 
-result_df = parsed_df.select(
-    f.col("id"),
-    f.col(
-        "json.level1.level2.level3.level4.level5.level6.level7.level8.level9.level10.key"
-    ).alias("key"),
-)
+    result_time.append(processing_time_ms=(end_time - start_time) * 1000)
+    result_df_size.append(
+        memory_size1=spark._jvm.org.apache.spark.util.SizeEstimator.estimate(df._jdf)
+    )
+    result_parsed_df_size.append(
+        memory_size2=spark._jvm.org.apache.spark.util.SizeEstimator.estimate(
+            parsed_df._jdf
+        )
+    )
 
-result_df.show()
+for t, d, p_d in zip(result_time, result_df_size, result_parsed_df_size):
+    print(
+        f"処理時間：{t:.2f} ms, dfのヒープメモリの推定消費サイズ：{d} byte, parsed_dfのヒープメモリの消費推定サイズ：{p_d} byte"
+    )
 
-end_time = time.time()
-
-processing_time_ms = (end_time - start_time) * 1000
-print(f"処理時間: {processing_time_ms:.2f} ms")
-
-memory_size1 = spark._jvm.org.apache.spark.util.SizeEstimator.estimate(df._jdf)
-memory_size2 = spark._jvm.org.apache.spark.util.SizeEstimator.estimate(parsed_df._jdf)
-
-parsed_df.printSchema()
-parsed_df.explain(True)
-print(f"dfのヒープメモリの消費推定サイズ：{memory_size1} byte")
-print(f"parsed_dfのヒープメモリの消費推定サイズ：{memory_size2} byte")
 
 spark.stop()
