@@ -11,5 +11,5 @@
 $ spark-submit --master local non-variant-sample.py
 
 # sample using json with variant
-$ spark-submit --master local non-variant-sample.py
+$ spark-submit --master local variant-sample.py
 ```
